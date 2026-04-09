@@ -48,6 +48,9 @@ def _build_parser(settings) -> argparse.ArgumentParser:
         default=os.getenv("DATABRICKS_SECRET_SCOPE", ""),
         help="Databricks secret scope name used to resolve API keys when env vars are absent.",
     )
+    parser.add_argument("--storage-backend", default=os.getenv("STORAGE_BACKEND", ""))
+    parser.add_argument("--databricks-catalog", default=os.getenv("DATABRICKS_CATALOG", ""))
+    parser.add_argument("--databricks-schema", default=os.getenv("DATABRICKS_SCHEMA", ""))
     parser.add_argument("--job-id", default="", help="Optional job identifier. A UUID is generated if omitted.")
     parser.add_argument("--job-text", default="", help="Raw job advertisement text.")
     parser.add_argument("--job-text-file", default="", help="Path to a file containing the job advertisement text.")
