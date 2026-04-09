@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -23,18 +24,14 @@ def _ensure_project_root() -> None:
 
 _ensure_project_root()
 
-from src.services.review_workflow import (
-    save_candidate_feedback_entry,
-    save_final_review_decision,
-    save_reviewer_feedback,
-)
-
-
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Save reviewer, candidate, or final decision feedback.")
     subparsers = parser.add_subparsers(dest="kind", required=True)
 
     reviewer = subparsers.add_parser("reviewer", help="Save reviewer feedback.")
+    reviewer.add_argument("--storage-backend", default=os.getenv("STORAGE_BACKEND", ""))
+    reviewer.add_argument("--databricks-catalog", default=os.getenv("DATABRICKS_CATALOG", ""))
+    reviewer.add_argument("--databricks-schema", default=os.getenv("DATABRICKS_SCHEMA", ""))
     reviewer.add_argument("--job-id", required=True)
     reviewer.add_argument("--assignment-id", required=True)
     reviewer.add_argument("--feedback", required=True)
@@ -43,6 +40,9 @@ def _build_parser() -> argparse.ArgumentParser:
     reviewer.add_argument("--rating", type=float, required=True)
 
     candidate = subparsers.add_parser("candidate", help="Save candidate survey feedback.")
+    candidate.add_argument("--storage-backend", default=os.getenv("STORAGE_BACKEND", ""))
+    candidate.add_argument("--databricks-catalog", default=os.getenv("DATABRICKS_CATALOG", ""))
+    candidate.add_argument("--databricks-schema", default=os.getenv("DATABRICKS_SCHEMA", ""))
     candidate.add_argument("--job-id", required=True)
     candidate.add_argument("--assignment-id", required=True)
     candidate.add_argument("--candidate-name", default="anonymous")
@@ -54,6 +54,9 @@ def _build_parser() -> argparse.ArgumentParser:
     candidate.add_argument("--comments", default="")
 
     decision = subparsers.add_parser("decision", help="Save final review decision.")
+    decision.add_argument("--storage-backend", default=os.getenv("STORAGE_BACKEND", ""))
+    decision.add_argument("--databricks-catalog", default=os.getenv("DATABRICKS_CATALOG", ""))
+    decision.add_argument("--databricks-schema", default=os.getenv("DATABRICKS_SCHEMA", ""))
     decision.add_argument("--job-id", required=True)
     decision.add_argument("--selected-assignment-id", required=True)
     decision.add_argument("--selected-version", type=int, required=True)
@@ -64,7 +67,34 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _bootstrap_runtime_config(argv: list[str] | None = None) -> None:
+    bootstrap_parser = argparse.ArgumentParser(add_help=False)
+    bootstrap_parser.add_argument("--storage-backend", default=os.getenv("STORAGE_BACKEND", ""))
+    bootstrap_parser.add_argument("--databricks-catalog", default=os.getenv("DATABRICKS_CATALOG", ""))
+    bootstrap_parser.add_argument("--databricks-schema", default=os.getenv("DATABRICKS_SCHEMA", ""))
+    parsed, _ = bootstrap_parser.parse_known_args(argv)
+
+    storage_backend = str(getattr(parsed, "storage_backend", "") or "").strip()
+    if storage_backend:
+        os.environ["STORAGE_BACKEND"] = storage_backend
+
+    databricks_catalog = str(getattr(parsed, "databricks_catalog", "") or "").strip()
+    if databricks_catalog:
+        os.environ["DATABRICKS_CATALOG"] = databricks_catalog
+
+    databricks_schema = str(getattr(parsed, "databricks_schema", "") or "").strip()
+    if databricks_schema:
+        os.environ["DATABRICKS_SCHEMA"] = databricks_schema
+
+
 def main(argv: list[str] | None = None) -> int:
+    _bootstrap_runtime_config(argv)
+
+    from src.services.review_workflow import (
+        save_candidate_feedback_entry,
+        save_final_review_decision,
+        save_reviewer_feedback,
+    )
     parser = _build_parser()
     args = parser.parse_args(argv)
 

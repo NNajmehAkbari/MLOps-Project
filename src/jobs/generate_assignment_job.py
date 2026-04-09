@@ -25,11 +25,6 @@ def _ensure_project_root() -> None:
 
 _ensure_project_root()
 
-from src.services.assignment_workflow import persist_assignment_version, run_assignment_workflow
-from src.storage.backend import get_storage_backend
-from src.utils.config import get_settings
-
-
 def _str_to_bool(value: str | bool) -> bool:
     if isinstance(value, bool):
         return value
@@ -76,10 +71,37 @@ def _bootstrap_secret_scope(argv: list[str] | None = None) -> str:
     return str(getattr(parsed, "secret_scope", "") or "").strip()
 
 
-def main(argv: list[str] | None = None) -> int:
-    secret_scope = _bootstrap_secret_scope(argv)
+def _bootstrap_runtime_config(argv: list[str] | None = None) -> None:
+    bootstrap_parser = argparse.ArgumentParser(add_help=False)
+    bootstrap_parser.add_argument("--secret-scope", default=os.getenv("DATABRICKS_SECRET_SCOPE", ""))
+    bootstrap_parser.add_argument("--storage-backend", default=os.getenv("STORAGE_BACKEND", ""))
+    bootstrap_parser.add_argument("--databricks-catalog", default=os.getenv("DATABRICKS_CATALOG", ""))
+    bootstrap_parser.add_argument("--databricks-schema", default=os.getenv("DATABRICKS_SCHEMA", ""))
+    parsed, _ = bootstrap_parser.parse_known_args(argv)
+
+    secret_scope = str(getattr(parsed, "secret_scope", "") or "").strip()
     if secret_scope:
         os.environ["DATABRICKS_SECRET_SCOPE"] = secret_scope
+
+    storage_backend = str(getattr(parsed, "storage_backend", "") or "").strip()
+    if storage_backend:
+        os.environ["STORAGE_BACKEND"] = storage_backend
+
+    databricks_catalog = str(getattr(parsed, "databricks_catalog", "") or "").strip()
+    if databricks_catalog:
+        os.environ["DATABRICKS_CATALOG"] = databricks_catalog
+
+    databricks_schema = str(getattr(parsed, "databricks_schema", "") or "").strip()
+    if databricks_schema:
+        os.environ["DATABRICKS_SCHEMA"] = databricks_schema
+
+
+def main(argv: list[str] | None = None) -> int:
+    _bootstrap_runtime_config(argv)
+
+    from src.services.assignment_workflow import persist_assignment_version, run_assignment_workflow
+    from src.storage.backend import get_storage_backend
+    from src.utils.config import get_settings
 
     settings = get_settings()
     parser = _build_parser(settings)

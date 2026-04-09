@@ -36,6 +36,12 @@ resources:
           default: "auto"
         - name: show_retrieval_debug
           default: "true"
+        - name: storage_backend
+          default: databricks
+        - name: databricks_catalog
+          default: workspace
+        - name: databricks_schema
+          default: default
       environments:
         - *serverless_env
       tasks:
@@ -64,6 +70,12 @@ resources:
               - "{{ job.parameters.domain_override }}"
               - --show-retrieval-debug
               - "{{ job.parameters.show_retrieval_debug }}"
+              - --storage-backend
+              - "{{ job.parameters.storage_backend }}"
+              - --databricks-catalog
+              - "{{ job.parameters.databricks_catalog }}"
+              - --databricks-schema
+              - "{{ job.parameters.databricks_schema }}"
 
         - task_key: refresh_gold
           depends_on:
@@ -98,6 +110,12 @@ resources:
           default: "auto"
         - name: show_retrieval_debug
           default: "true"
+        - name: storage_backend
+          default: databricks
+        - name: databricks_catalog
+          default: workspace
+        - name: databricks_schema
+          default: default
       environments:
         - *serverless_env
       tasks:
@@ -126,12 +144,24 @@ resources:
               - "{{ job.parameters.domain_override }}"
               - --show-retrieval-debug
               - "{{ job.parameters.show_retrieval_debug }}"
+              - --storage-backend
+              - "{{ job.parameters.storage_backend }}"
+              - --databricks-catalog
+              - "{{ job.parameters.databricks_catalog }}"
+              - --databricks-schema
+              - "{{ job.parameters.databricks_schema }}"
 
     refresh_gold_job:
       name: refresh_gold_job
       parameters:
         - name: job_id
           default: ""
+        - name: storage_backend
+          default: databricks
+        - name: databricks_catalog
+          default: workspace
+        - name: databricks_schema
+          default: default
       schedule:
         quartz_cron_expression: "0 0 2 ? * *"
         timezone_id: "Europe/Helsinki"
@@ -146,6 +176,12 @@ resources:
             parameters:
               - --job-id
               - "{{ job.parameters.job_id }}"
+              - --storage-backend
+              - "{{ job.parameters.storage_backend }}"
+              - --databricks-catalog
+              - "{{ job.parameters.databricks_catalog }}"
+              - --databricks-schema
+              - "{{ job.parameters.databricks_schema }}"
 
     save_reviewer_feedback_job:
       name: save_reviewer_feedback_job
@@ -162,6 +198,12 @@ resources:
           default: HR1
         - name: rating
           default: "3"
+        - name: storage_backend
+          default: databricks
+        - name: databricks_catalog
+          default: workspace
+        - name: databricks_schema
+          default: default
       environments:
         - *serverless_env
       tasks:
@@ -183,6 +225,12 @@ resources:
               - "{{ job.parameters.reviewer }}"
               - --rating
               - "{{ job.parameters.rating }}"
+              - --storage-backend
+              - "{{ job.parameters.storage_backend }}"
+              - --databricks-catalog
+              - "{{ job.parameters.databricks_catalog }}"
+              - --databricks-schema
+              - "{{ job.parameters.databricks_schema }}"
 
     save_candidate_feedback_job:
       name: save_candidate_feedback_job
@@ -205,6 +253,12 @@ resources:
           default: "yes"
         - name: comments
           default: ""
+        - name: storage_backend
+          default: databricks
+        - name: databricks_catalog
+          default: workspace
+        - name: databricks_schema
+          default: default
       environments:
         - *serverless_env
       tasks:
@@ -232,6 +286,12 @@ resources:
               - "{{ job.parameters.time_reasonable }}"
               - --comments
               - "{{ job.parameters.comments }}"
+              - --storage-backend
+              - "{{ job.parameters.storage_backend }}"
+              - --databricks-catalog
+              - "{{ job.parameters.databricks_catalog }}"
+              - --databricks-schema
+              - "{{ job.parameters.databricks_schema }}"
 
     save_final_decision_job:
       name: save_final_decision_job
@@ -248,6 +308,12 @@ resources:
           default: HR1
         - name: notes
           default: ""
+        - name: storage_backend
+          default: databricks
+        - name: databricks_catalog
+          default: workspace
+        - name: databricks_schema
+          default: default
       environments:
         - *serverless_env
       tasks:
@@ -269,3 +335,9 @@ resources:
               - "{{ job.parameters.reviewer }}"
               - --notes
               - "{{ job.parameters.notes }}"
+              - --storage-backend
+              - "{{ job.parameters.storage_backend }}"
+              - --databricks-catalog
+              - "{{ job.parameters.databricks_catalog }}"
+              - --databricks-schema
+              - "{{ job.parameters.databricks_schema }}"

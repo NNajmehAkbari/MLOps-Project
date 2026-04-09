@@ -37,7 +37,7 @@ class DatabricksConfig:
     token: str
     assignment_pipeline_job_id: int | None
     assignment_pipeline_job_name: str = "assignment_pipeline_job"
-    catalog: str = "main"
+    catalog: str = "workspace"
     schema: str = "default"
     gold_latest_assignments_table: str = "gold_latest_assignment_versions"
 
@@ -52,7 +52,7 @@ class DatabricksConfig:
                 "DATABRICKS_ASSIGNMENT_PIPELINE_JOB_NAME",
                 "assignment_pipeline_job",
             ).strip(),
-            catalog=os.getenv("DATABRICKS_CATALOG", "main").strip(),
+            catalog=os.getenv("DATABRICKS_CATALOG", "workspace").strip(),
             schema=os.getenv("DATABRICKS_SCHEMA", "default").strip(),
             gold_latest_assignments_table=os.getenv(
                 "DATABRICKS_GOLD_LATEST_ASSIGNMENTS_TABLE",
