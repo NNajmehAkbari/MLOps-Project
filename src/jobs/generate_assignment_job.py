@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import uuid
 from pathlib import Path
@@ -47,6 +48,11 @@ def _read_job_text(args: argparse.Namespace) -> str:
 
 def _build_parser(settings) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Generate and persist a take-home assignment.")
+    parser.add_argument(
+        "--secret-scope",
+        default=os.getenv("DATABRICKS_SECRET_SCOPE", ""),
+        help="Databricks secret scope name used to resolve API keys when env vars are absent.",
+    )
     parser.add_argument("--job-id", default="", help="Optional job identifier. A UUID is generated if omitted.")
     parser.add_argument("--job-text", default="", help="Raw job advertisement text.")
     parser.add_argument("--job-text-file", default="", help="Path to a file containing the job advertisement text.")
@@ -60,7 +66,21 @@ def _build_parser(settings) -> argparse.ArgumentParser:
     return parser
 
 
+def _bootstrap_secret_scope(argv: list[str] | None = None) -> str:
+    bootstrap_parser = argparse.ArgumentParser(add_help=False)
+    bootstrap_parser.add_argument(
+        "--secret-scope",
+        default=os.getenv("DATABRICKS_SECRET_SCOPE", ""),
+    )
+    parsed, _ = bootstrap_parser.parse_known_args(argv)
+    return str(getattr(parsed, "secret_scope", "") or "").strip()
+
+
 def main(argv: list[str] | None = None) -> int:
+    secret_scope = _bootstrap_secret_scope(argv)
+    if secret_scope:
+        os.environ["DATABRICKS_SECRET_SCOPE"] = secret_scope
+
     settings = get_settings()
     parser = _build_parser(settings)
     args = parser.parse_args(argv)
@@ -109,4 +129,4 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()

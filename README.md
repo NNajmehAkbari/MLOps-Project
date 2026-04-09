@@ -35,6 +35,7 @@ Do not commit real API keys to Git.
 - For local development, keep keys in your personal `.env` file and leave it ignored by Git.
 - For Databricks, prefer workspace secrets or job-level environment variables that reference secrets, instead of hardcoding values in `databricks.yml`.
 - The code already reads `OPENAI_API_KEY`, `JUDGE_API_KEY` or `GEMINI_API_KEY`, and the Databricks connection values from environment variables.
+- The Databricks bundle also passes a non-secret `secret_scope` parameter to the generation task. The code uses that scope to read `OPENAI_API_KEY` and `GEMINI_API_KEY` from Databricks secrets when the env vars are missing.
 
 By default:
 - generation uses `OPENAI_API_KEY` and `OPENAI_MODEL`

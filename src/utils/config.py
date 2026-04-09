@@ -34,6 +34,30 @@ else:
     _load_env_file_fallback()
 
 
+def _read_databricks_secret(scope: str, key: str) -> str:
+    scope = (scope or "").strip()
+    key = (key or "").strip()
+    if not scope or not key:
+        return ""
+
+    secret_value = ""
+    try:
+        from databricks.sdk.runtime import dbutils  # type: ignore
+
+        secret_value = dbutils.secrets.get(scope=scope, key=key)
+    except Exception:
+        try:
+            from pyspark.sql import SparkSession
+            from pyspark.dbutils import DBUtils
+
+            spark = SparkSession.getActiveSession() or SparkSession.builder.getOrCreate()
+            secret_value = DBUtils(spark).secrets.get(scope=scope, key=key)
+        except Exception:
+            return ""
+
+    return str(secret_value or "").strip()
+
+
 DEFAULT_DURATION_OPTIONS: tuple[str, ...] = ("1h", "2h", "3h", "4h", "5h+")
 DEFAULT_DURATION_LABELS: dict[str, str] = {
     "1h": "1 hour",
@@ -86,6 +110,7 @@ DEFAULT_DATABRICKS_GOLD_KPI_SUMMARY_TABLE = "gold_kpi_summary"
 DEFAULT_DATABRICKS_GOLD_LATEST_ASSIGNMENTS_TABLE = "gold_latest_assignment_versions"
 DEFAULT_DATABRICKS_CATALOG = "main"
 DEFAULT_DATABRICKS_SCHEMA = "default"
+DEFAULT_DATABRICKS_SECRET_SCOPE = ""
 DEFAULT_RETRIEVAL_TOP_K = 2
 DEFAULT_RETRIEVAL_TOP_K_MIN = 1
 DEFAULT_RETRIEVAL_TOP_K_MAX = 5
@@ -132,6 +157,7 @@ class Settings:
     databricks_gold_latest_assignments_table: str
     databricks_catalog: str
     databricks_schema: str
+    databricks_secret_scope: str
     app_data_dir: Path
     raw_dir: Path
     processed_dir: Path
@@ -200,11 +226,19 @@ def get_settings() -> Settings:
         project_root=project_root,
         storage_backend=os.getenv("STORAGE_BACKEND", DEFAULT_STORAGE_BACKEND).strip().lower(),
         llm_provider=os.getenv("LLM_PROVIDER", "mock").strip().lower(),
-        openai_api_key=os.getenv("OPENAI_API_KEY", "").strip(),
+        openai_api_key=(
+            os.getenv("OPENAI_API_KEY", "").strip()
+            or _read_databricks_secret(os.getenv("DATABRICKS_SECRET_SCOPE", ""), "OPENAI_API_KEY")
+        ),
         openai_model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini").strip(),
         judge_provider=os.getenv("JUDGE_PROVIDER", DEFAULT_JUDGE_PROVIDER).strip().lower(),
         judge_model=os.getenv("JUDGE_MODEL", DEFAULT_JUDGE_MODEL).strip(),
-        judge_api_key=os.getenv("JUDGE_API_KEY", os.getenv("GEMINI_API_KEY", "")).strip(),
+        judge_api_key=(
+            os.getenv("JUDGE_API_KEY", "").strip()
+            or os.getenv("GEMINI_API_KEY", "").strip()
+            or _read_databricks_secret(os.getenv("DATABRICKS_SECRET_SCOPE", ""), "JUDGE_API_KEY")
+            or _read_databricks_secret(os.getenv("DATABRICKS_SECRET_SCOPE", ""), "GEMINI_API_KEY")
+        ),
         use_llm_job_parser=os.getenv("USE_LLM_JOB_PARSER", str(int(DEFAULT_USE_LLM_JOB_PARSER))).strip().lower()
         in {"1", "true", "yes", "on"},
         use_sentence_transformers=os.getenv("USE_SENTENCE_TRANSFORMERS", str(int(DEFAULT_USE_SENTENCE_TRANSFORMERS))).strip().lower()
@@ -263,6 +297,10 @@ def get_settings() -> Settings:
         ).strip(),
         databricks_catalog=os.getenv("DATABRICKS_CATALOG", DEFAULT_DATABRICKS_CATALOG).strip(),
         databricks_schema=os.getenv("DATABRICKS_SCHEMA", DEFAULT_DATABRICKS_SCHEMA).strip(),
+        databricks_secret_scope=os.getenv(
+            "DATABRICKS_SECRET_SCOPE",
+            DEFAULT_DATABRICKS_SECRET_SCOPE,
+        ).strip(),
         app_data_dir=app_data_dir,
         raw_dir=raw_dir,
         processed_dir=processed_dir,

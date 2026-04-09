@@ -18,6 +18,8 @@ resources:
       parameters:
         - name: job_id
           default: ""
+        - name: secret_scope
+          default: mlops-project
         - name: job_text
           default: ""
         - name: assignment_hours
@@ -44,6 +46,8 @@ resources:
             parameters:
               - --job-id
               - "{{ job.parameters.job_id }}"
+              - --secret-scope
+              - "{{ job.parameters.secret_scope }}"
               - --job-text
               - "{{ job.parameters.job_text }}"
               - --assignment-hours
@@ -76,6 +80,8 @@ resources:
       parameters:
         - name: job_id
           default: ""
+        - name: secret_scope
+          default: mlops-project
         - name: job_text
           default: ""
         - name: assignment_hours
@@ -102,6 +108,8 @@ resources:
             parameters:
               - --job-id
               - "{{ job.parameters.job_id }}"
+              - --secret-scope
+              - "{{ job.parameters.secret_scope }}"
               - --job-text
               - "{{ job.parameters.job_text }}"
               - --assignment-hours
