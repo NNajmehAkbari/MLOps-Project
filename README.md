@@ -151,6 +151,53 @@ Use one shared job cluster for both tasks so the workflow stays simple and fast.
 
 The default bundle cluster uses a sample node type and Spark version; if your workspace uses a different cloud or policy, adjust `spark_version` and `node_type_id` in [`databricks.yml`](databricks.yml) before deploying.
 
+## API Layer
+If you want an API to receive a job ad, trigger Databricks, and read the result back, the repo now includes a small FastAPI starter in [`api/`](api/).
+
+It exposes:
+- `POST /job-ads`
+- `GET /job-ads/{job_id}`
+- `GET /job-ads/{job_id}/result`
+
+The API uses these environment variables:
+- `DATABRICKS_HOST`
+- `DATABRICKS_TOKEN`
+- `DATABRICKS_ASSIGNMENT_PIPELINE_JOB_ID` or `DATABRICKS_ASSIGNMENT_PIPELINE_JOB_NAME`
+- `DATABRICKS_SERVER_HOSTNAME`
+- `DATABRICKS_HTTP_PATH`
+- `DATABRICKS_CATALOG`
+- `DATABRICKS_SCHEMA`
+
+If `DATABRICKS_ASSIGNMENT_PIPELINE_JOB_ID` is not set, the API will try to find the job by name, defaulting to `assignment_pipeline_job`.
+
+Install the API extras with:
+
+```bash
+pip install -r requirements-api.txt
+```
+
+Run the API locally with:
+
+```bash
+uvicorn api.main:app --reload
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+Or use the simple built-in form at:
+
+```text
+http://127.0.0.1:8000/
+```
+
+The `POST /job-ads` endpoint triggers the Databricks pipeline and returns a `job_id`. The status and result endpoints poll Databricks and read the latest assignment row from the Gold table.
+
+The API also stores its job state locally in `api/data/` so the job ID and status survive server reloads while you are testing.
+
 ## Run Checklist
 1. Activate the repo-local virtualenv.
 2. Confirm `.env` contains `OPENAI_API_KEY`, `JUDGE_PROVIDER`, `JUDGE_MODEL`, and the Databricks connection values.

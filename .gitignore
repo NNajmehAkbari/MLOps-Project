@@ -8,6 +8,8 @@ __pycache__/
 *.pyc
 .DS_Store
 data/
+.venv312/
+api/data/
 .bundle/
 dist/
 build/
