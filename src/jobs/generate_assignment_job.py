@@ -52,6 +52,7 @@ def _build_parser(settings) -> argparse.ArgumentParser:
     parser.add_argument("--openai-model", default=os.getenv("OPENAI_MODEL", ""))
     parser.add_argument("--judge-provider", default=os.getenv("JUDGE_PROVIDER", ""))
     parser.add_argument("--judge-model", default=os.getenv("JUDGE_MODEL", ""))
+    parser.add_argument("--use-llm-job-parser", default=os.getenv("USE_LLM_JOB_PARSER", ""))
     parser.add_argument("--storage-backend", default=os.getenv("STORAGE_BACKEND", ""))
     parser.add_argument("--databricks-catalog", default=os.getenv("DATABRICKS_CATALOG", ""))
     parser.add_argument("--databricks-schema", default=os.getenv("DATABRICKS_SCHEMA", ""))
@@ -85,6 +86,7 @@ def _bootstrap_runtime_config(argv: list[str] | None = None) -> None:
     bootstrap_parser.add_argument("--openai-model", default=os.getenv("OPENAI_MODEL", ""))
     bootstrap_parser.add_argument("--judge-provider", default=os.getenv("JUDGE_PROVIDER", ""))
     bootstrap_parser.add_argument("--judge-model", default=os.getenv("JUDGE_MODEL", ""))
+    bootstrap_parser.add_argument("--use-llm-job-parser", default=os.getenv("USE_LLM_JOB_PARSER", ""))
     bootstrap_parser.add_argument("--storage-backend", default=os.getenv("STORAGE_BACKEND", ""))
     bootstrap_parser.add_argument("--databricks-catalog", default=os.getenv("DATABRICKS_CATALOG", ""))
     bootstrap_parser.add_argument("--databricks-schema", default=os.getenv("DATABRICKS_SCHEMA", ""))
@@ -109,6 +111,10 @@ def _bootstrap_runtime_config(argv: list[str] | None = None) -> None:
     judge_model = str(getattr(parsed, "judge_model", "") or "").strip()
     if judge_model:
         os.environ["JUDGE_MODEL"] = judge_model
+
+    use_llm_job_parser = str(getattr(parsed, "use_llm_job_parser", "") or "").strip()
+    if use_llm_job_parser:
+        os.environ["USE_LLM_JOB_PARSER"] = use_llm_job_parser
 
     storage_backend = str(getattr(parsed, "storage_backend", "") or "").strip()
     if storage_backend:
