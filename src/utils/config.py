@@ -58,6 +58,13 @@ def _read_databricks_secret(scope: str, key: str) -> str:
     return str(secret_value or "").strip()
 
 
+def _env_or_databricks_secret(env_key: str, scope: str, secret_key: str, default: str = "") -> str:
+    value = os.getenv(env_key, "").strip()
+    if value:
+        return value
+    return _read_databricks_secret(scope, secret_key) or default
+
+
 DEFAULT_DURATION_OPTIONS: tuple[str, ...] = ("1h", "2h", "3h", "4h", "5h+")
 DEFAULT_DURATION_LABELS: dict[str, str] = {
     "1h": "1 hour",
@@ -244,9 +251,21 @@ def get_settings() -> Settings:
         use_sentence_transformers=os.getenv("USE_SENTENCE_TRANSFORMERS", str(int(DEFAULT_USE_SENTENCE_TRANSFORMERS))).strip().lower()
         in {"1", "true", "yes", "on"},
         jobbert_model_name=os.getenv("JOBBERT_MODEL_NAME", "JobBERT-v3").strip(),
-        databricks_server_hostname=os.getenv("DATABRICKS_SERVER_HOSTNAME", "").strip(),
-        databricks_http_path=os.getenv("DATABRICKS_HTTP_PATH", "").strip(),
-        databricks_token=os.getenv("DATABRICKS_TOKEN", "").strip(),
+        databricks_server_hostname=_env_or_databricks_secret(
+            "DATABRICKS_SERVER_HOSTNAME",
+            os.getenv("DATABRICKS_SECRET_SCOPE", ""),
+            "DATABRICKS_SERVER_HOSTNAME",
+        ),
+        databricks_http_path=_env_or_databricks_secret(
+            "DATABRICKS_HTTP_PATH",
+            os.getenv("DATABRICKS_SECRET_SCOPE", ""),
+            "DATABRICKS_HTTP_PATH",
+        ),
+        databricks_token=_env_or_databricks_secret(
+            "DATABRICKS_TOKEN",
+            os.getenv("DATABRICKS_SECRET_SCOPE", ""),
+            "DATABRICKS_TOKEN",
+        ),
         databricks_bronze_job_ads_table=os.getenv(
             "DATABRICKS_BRONZE_JOB_ADS_TABLE",
             DEFAULT_DATABRICKS_BRONZE_JOB_ADS_TABLE,
