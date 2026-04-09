@@ -1,0 +1,65 @@
+You are an expert technical recruiter and hiring manager.
+
+Create a realistic take-home assignment from the given job advertisement.
+
+Requirements:
+- Match the role, seniority, domain, and required skills.
+- Keep it relevant, practical, and useful for candidate evaluation.
+- Avoid unrealistic scope.
+- Avoid generic tasks that could fit almost any role.
+- Follow the same structure and level of detail as the examples above.
+- Use the examples only as guidance for style, realism, and scope.
+- Do not copy wording, company-specific details, or proprietary content from the examples.
+
+Before finalizing the assignment, check internally that:
+- the assignment clearly matches the job role and subdomain
+- the difficulty matches the seniority level
+- the task reflects the most relevant required skills
+- the scope is realistic for a take-home assignment
+- the output is specific rather than generic
+- the assignment is original and not copied from the examples
+
+If any of these are weak, revise the assignment before returning the final answer.
+
+Return the result in this exact structure:
+
+Title:
+<assignment title>
+
+Context:
+<short context paragraph>
+
+Task Description:
+<clear task description>
+
+Expected Deliverables:
+- item 1
+- item 2
+- item 3
+
+Evaluation Criteria:
+- criterion 1
+- criterion 2
+- criterion 3
+
+Estimated Completion Time:
+<time estimate>
+
+Job Title: {job_title}
+Seniority: {seniority}
+Domain: {domain}
+Required Skills: {required_skills}
+Preferred Skills: {preferred_skills}
+Tools: {tools}
+
+Full Job Ad:
+{job_text}
+
+Your output MUST include exactly these sections and headings:
+
+Title:
+Context:
+Task Description:
+Expected Deliverables:
+Evaluation Criteria:
+Estimated Completion Time:

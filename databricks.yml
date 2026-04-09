@@ -1,0 +1,263 @@
+bundle:
+  name: recruitment_assignment_ai_databricks
+
+workspace:
+  root_path: /Workspace/Users/${workspace.current_user.userName}/bundles/${bundle.name}/${bundle.target}
+
+x-serverless-env: &serverless_env
+  environment_key: default
+  spec:
+    environment_version: "2"
+    dependencies:
+      - "-r ${workspace.file_path}/requirements.txt"
+
+resources:
+  jobs:
+    assignment_pipeline_job:
+      name: assignment_pipeline_job
+      parameters:
+        - name: job_id
+          default: ""
+        - name: job_text
+          default: ""
+        - name: assignment_hours
+          default: "2h"
+        - name: difficulty
+          default: "medium"
+        - name: focus_area
+          default: ""
+        - name: use_retrieval
+          default: "false"
+        - name: top_k
+          default: "2"
+        - name: domain_override
+          default: "auto"
+        - name: show_retrieval_debug
+          default: "true"
+      environments:
+        - *serverless_env
+      tasks:
+        - task_key: generate_assignment
+          environment_key: default
+          spark_python_task:
+            python_file: ./src/jobs/generate_assignment_job.py
+            parameters:
+              - --job-id
+              - "{{ job.parameters.job_id }}"
+              - --job-text
+              - "{{ job.parameters.job_text }}"
+              - --assignment-hours
+              - "{{ job.parameters.assignment_hours }}"
+              - --difficulty
+              - "{{ job.parameters.difficulty }}"
+              - --focus-area
+              - "{{ job.parameters.focus_area }}"
+              - --use-retrieval
+              - "{{ job.parameters.use_retrieval }}"
+              - --top-k
+              - "{{ job.parameters.top_k }}"
+              - --domain-override
+              - "{{ job.parameters.domain_override }}"
+              - --show-retrieval-debug
+              - "{{ job.parameters.show_retrieval_debug }}"
+
+        - task_key: refresh_gold
+          depends_on:
+            - task_key: generate_assignment
+          environment_key: default
+          spark_python_task:
+            python_file: ./src/jobs/refresh_gold_job.py
+            parameters:
+              - --job-id
+              - "{{ job.parameters.job_id }}"
+
+    generate_assignment_job:
+      name: generate_assignment_job
+      parameters:
+        - name: job_id
+          default: ""
+        - name: job_text
+          default: ""
+        - name: assignment_hours
+          default: "2h"
+        - name: difficulty
+          default: "medium"
+        - name: focus_area
+          default: ""
+        - name: use_retrieval
+          default: "false"
+        - name: top_k
+          default: "2"
+        - name: domain_override
+          default: "auto"
+        - name: show_retrieval_debug
+          default: "true"
+      environments:
+        - *serverless_env
+      tasks:
+        - task_key: generate_assignment
+          environment_key: default
+          spark_python_task:
+            python_file: ./src/jobs/generate_assignment_job.py
+            parameters:
+              - --job-id
+              - "{{ job.parameters.job_id }}"
+              - --job-text
+              - "{{ job.parameters.job_text }}"
+              - --assignment-hours
+              - "{{ job.parameters.assignment_hours }}"
+              - --difficulty
+              - "{{ job.parameters.difficulty }}"
+              - --focus-area
+              - "{{ job.parameters.focus_area }}"
+              - --use-retrieval
+              - "{{ job.parameters.use_retrieval }}"
+              - --top-k
+              - "{{ job.parameters.top_k }}"
+              - --domain-override
+              - "{{ job.parameters.domain_override }}"
+              - --show-retrieval-debug
+              - "{{ job.parameters.show_retrieval_debug }}"
+
+    refresh_gold_job:
+      name: refresh_gold_job
+      parameters:
+        - name: job_id
+          default: ""
+      schedule:
+        quartz_cron_expression: "0 0 2 ? * *"
+        timezone_id: "Europe/Helsinki"
+        pause_status: UNPAUSED
+      environments:
+        - *serverless_env
+      tasks:
+        - task_key: refresh_gold
+          environment_key: default
+          spark_python_task:
+            python_file: ./src/jobs/refresh_gold_job.py
+            parameters:
+              - --job-id
+              - "{{ job.parameters.job_id }}"
+
+    save_reviewer_feedback_job:
+      name: save_reviewer_feedback_job
+      parameters:
+        - name: job_id
+          default: ""
+        - name: assignment_id
+          default: ""
+        - name: feedback
+          default: positive
+        - name: reason
+          default: good quality
+        - name: reviewer
+          default: HR1
+        - name: rating
+          default: "3"
+      environments:
+        - *serverless_env
+      tasks:
+        - task_key: save_reviewer_feedback
+          environment_key: default
+          spark_python_task:
+            python_file: ./src/jobs/save_feedback_job.py
+            parameters:
+              - reviewer
+              - --job-id
+              - "{{ job.parameters.job_id }}"
+              - --assignment-id
+              - "{{ job.parameters.assignment_id }}"
+              - --feedback
+              - "{{ job.parameters.feedback }}"
+              - --reason
+              - "{{ job.parameters.reason }}"
+              - --reviewer
+              - "{{ job.parameters.reviewer }}"
+              - --rating
+              - "{{ job.parameters.rating }}"
+
+    save_candidate_feedback_job:
+      name: save_candidate_feedback_job
+      parameters:
+        - name: job_id
+          default: ""
+        - name: assignment_id
+          default: ""
+        - name: candidate_name
+          default: anonymous
+        - name: overall_score
+          default: "3"
+        - name: clarity_score
+          default: "3"
+        - name: difficulty_score
+          default: "3"
+        - name: relevance_score
+          default: "3"
+        - name: time_reasonable
+          default: "yes"
+        - name: comments
+          default: ""
+      environments:
+        - *serverless_env
+      tasks:
+        - task_key: save_candidate_feedback
+          environment_key: default
+          spark_python_task:
+            python_file: ./src/jobs/save_feedback_job.py
+            parameters:
+              - candidate
+              - --job-id
+              - "{{ job.parameters.job_id }}"
+              - --assignment-id
+              - "{{ job.parameters.assignment_id }}"
+              - --candidate-name
+              - "{{ job.parameters.candidate_name }}"
+              - --overall-score
+              - "{{ job.parameters.overall_score }}"
+              - --clarity-score
+              - "{{ job.parameters.clarity_score }}"
+              - --difficulty-score
+              - "{{ job.parameters.difficulty_score }}"
+              - --relevance-score
+              - "{{ job.parameters.relevance_score }}"
+              - --time-reasonable
+              - "{{ job.parameters.time_reasonable }}"
+              - --comments
+              - "{{ job.parameters.comments }}"
+
+    save_final_decision_job:
+      name: save_final_decision_job
+      parameters:
+        - name: job_id
+          default: ""
+        - name: selected_assignment_id
+          default: ""
+        - name: selected_version
+          default: "1"
+        - name: decision
+          default: approved
+        - name: reviewer
+          default: HR1
+        - name: notes
+          default: ""
+      environments:
+        - *serverless_env
+      tasks:
+        - task_key: save_final_decision
+          environment_key: default
+          spark_python_task:
+            python_file: ./src/jobs/save_feedback_job.py
+            parameters:
+              - decision
+              - --job-id
+              - "{{ job.parameters.job_id }}"
+              - --selected-assignment-id
+              - "{{ job.parameters.selected_assignment_id }}"
+              - --selected-version
+              - "{{ job.parameters.selected_version }}"
+              - --decision
+              - "{{ job.parameters.decision }}"
+              - --reviewer
+              - "{{ job.parameters.reviewer }}"
+              - --notes
+              - "{{ job.parameters.notes }}"
