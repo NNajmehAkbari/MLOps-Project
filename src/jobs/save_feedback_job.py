@@ -6,10 +6,11 @@ import sys
 from typing import Any
 
 
-def _ensure_project_root() -> None:
-    from pathlib import Path
+from src.jobs._bootstrap import resolve_project_root
 
-    project_root = Path(__file__).resolve().parents[2]
+
+def _ensure_project_root() -> None:
+    project_root = resolve_project_root()
     if str(project_root) not in sys.path:
         sys.path.insert(0, str(project_root))
 

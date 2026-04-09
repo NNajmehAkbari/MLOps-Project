@@ -3,11 +3,12 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from pathlib import Path
+
+from src.jobs._bootstrap import resolve_project_root
 
 
 def _ensure_project_root() -> None:
-    project_root = Path(__file__).resolve().parents[2]
+    project_root = resolve_project_root()
     if str(project_root) not in sys.path:
         sys.path.insert(0, str(project_root))
 

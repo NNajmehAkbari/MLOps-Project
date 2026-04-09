@@ -4,12 +4,14 @@ import argparse
 import json
 import sys
 import uuid
-from pathlib import Path
 from typing import Any
 
 
+from src.jobs._bootstrap import resolve_project_root
+
+
 def _ensure_project_root() -> None:
-    project_root = Path(__file__).resolve().parents[2]
+    project_root = resolve_project_root()
     if str(project_root) not in sys.path:
         sys.path.insert(0, str(project_root))
 
@@ -29,6 +31,8 @@ def _str_to_bool(value: str | bool) -> bool:
 
 def _read_job_text(args: argparse.Namespace) -> str:
     if args.job_text_file:
+        from pathlib import Path
+
         return Path(args.job_text_file).read_text(encoding="utf-8")
     if args.job_text:
         return args.job_text
