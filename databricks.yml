@@ -20,6 +20,14 @@ resources:
           default: ""
         - name: secret_scope
           default: mlops-project
+        - name: llm_provider
+          default: openai
+        - name: openai_model
+          default: gpt-4.1-mini
+        - name: judge_provider
+          default: gemini
+        - name: judge_model
+          default: gemini-2.5-flash
         - name: job_text
           default: ""
         - name: assignment_hours
@@ -54,6 +62,14 @@ resources:
               - "{{ job.parameters.job_id }}"
               - --secret-scope
               - "{{ job.parameters.secret_scope }}"
+              - --llm-provider
+              - "{{ job.parameters.llm_provider }}"
+              - --openai-model
+              - "{{ job.parameters.openai_model }}"
+              - --judge-provider
+              - "{{ job.parameters.judge_provider }}"
+              - --judge-model
+              - "{{ job.parameters.judge_model }}"
               - --job-text
               - "{{ job.parameters.job_text }}"
               - --assignment-hours
@@ -94,6 +110,14 @@ resources:
           default: ""
         - name: secret_scope
           default: mlops-project
+        - name: llm_provider
+          default: openai
+        - name: openai_model
+          default: gpt-4.1-mini
+        - name: judge_provider
+          default: gemini
+        - name: judge_model
+          default: gemini-2.5-flash
         - name: job_text
           default: ""
         - name: assignment_hours
@@ -128,6 +152,14 @@ resources:
               - "{{ job.parameters.job_id }}"
               - --secret-scope
               - "{{ job.parameters.secret_scope }}"
+              - --llm-provider
+              - "{{ job.parameters.llm_provider }}"
+              - --openai-model
+              - "{{ job.parameters.openai_model }}"
+              - --judge-provider
+              - "{{ job.parameters.judge_provider }}"
+              - --judge-model
+              - "{{ job.parameters.judge_model }}"
               - --job-text
               - "{{ job.parameters.job_text }}"
               - --assignment-hours

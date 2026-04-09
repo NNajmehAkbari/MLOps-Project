@@ -48,6 +48,10 @@ def _build_parser(settings) -> argparse.ArgumentParser:
         default=os.getenv("DATABRICKS_SECRET_SCOPE", ""),
         help="Databricks secret scope name used to resolve API keys when env vars are absent.",
     )
+    parser.add_argument("--llm-provider", default=os.getenv("LLM_PROVIDER", ""))
+    parser.add_argument("--openai-model", default=os.getenv("OPENAI_MODEL", ""))
+    parser.add_argument("--judge-provider", default=os.getenv("JUDGE_PROVIDER", ""))
+    parser.add_argument("--judge-model", default=os.getenv("JUDGE_MODEL", ""))
     parser.add_argument("--storage-backend", default=os.getenv("STORAGE_BACKEND", ""))
     parser.add_argument("--databricks-catalog", default=os.getenv("DATABRICKS_CATALOG", ""))
     parser.add_argument("--databricks-schema", default=os.getenv("DATABRICKS_SCHEMA", ""))
@@ -77,6 +81,10 @@ def _bootstrap_secret_scope(argv: list[str] | None = None) -> str:
 def _bootstrap_runtime_config(argv: list[str] | None = None) -> None:
     bootstrap_parser = argparse.ArgumentParser(add_help=False)
     bootstrap_parser.add_argument("--secret-scope", default=os.getenv("DATABRICKS_SECRET_SCOPE", ""))
+    bootstrap_parser.add_argument("--llm-provider", default=os.getenv("LLM_PROVIDER", ""))
+    bootstrap_parser.add_argument("--openai-model", default=os.getenv("OPENAI_MODEL", ""))
+    bootstrap_parser.add_argument("--judge-provider", default=os.getenv("JUDGE_PROVIDER", ""))
+    bootstrap_parser.add_argument("--judge-model", default=os.getenv("JUDGE_MODEL", ""))
     bootstrap_parser.add_argument("--storage-backend", default=os.getenv("STORAGE_BACKEND", ""))
     bootstrap_parser.add_argument("--databricks-catalog", default=os.getenv("DATABRICKS_CATALOG", ""))
     bootstrap_parser.add_argument("--databricks-schema", default=os.getenv("DATABRICKS_SCHEMA", ""))
@@ -85,6 +93,22 @@ def _bootstrap_runtime_config(argv: list[str] | None = None) -> None:
     secret_scope = str(getattr(parsed, "secret_scope", "") or "").strip()
     if secret_scope:
         os.environ["DATABRICKS_SECRET_SCOPE"] = secret_scope
+
+    llm_provider = str(getattr(parsed, "llm_provider", "") or "").strip()
+    if llm_provider:
+        os.environ["LLM_PROVIDER"] = llm_provider
+
+    openai_model = str(getattr(parsed, "openai_model", "") or "").strip()
+    if openai_model:
+        os.environ["OPENAI_MODEL"] = openai_model
+
+    judge_provider = str(getattr(parsed, "judge_provider", "") or "").strip()
+    if judge_provider:
+        os.environ["JUDGE_PROVIDER"] = judge_provider
+
+    judge_model = str(getattr(parsed, "judge_model", "") or "").strip()
+    if judge_model:
+        os.environ["JUDGE_MODEL"] = judge_model
 
     storage_backend = str(getattr(parsed, "storage_backend", "") or "").strip()
     if storage_backend:
