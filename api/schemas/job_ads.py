@@ -31,6 +31,7 @@ class JobAdCreateResponse(BaseModel):
     message: str
     databricks_run_id: int | None = None
     databricks_job_id: int | None = None
+    error_message: str | None = None
 
 
 class JobAdStatusResponse(BaseModel):
@@ -41,6 +42,7 @@ class JobAdStatusResponse(BaseModel):
     databricks_run_id: int | None = None
     databricks_job_id: int | None = None
     updated_at: str | None = None
+    error_message: str | None = None
 
 
 class JobAdResultResponse(BaseModel):

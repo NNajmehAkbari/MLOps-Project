@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
+import time
 import uuid
 from pathlib import Path
 from typing import Any
+from types import SimpleNamespace
+from urllib import error as urllib_error
+from urllib import request as urllib_request
 
 import pandas as pd
 import streamlit as st
@@ -1257,6 +1262,16 @@ def render_sidebar_controls(settings) -> dict[str, Any]:
             f"<div class='runtime-caption' style='margin-top:0.55rem;'>Storage status: <strong>{storage_status.get('status', 'unknown').title()}</strong>{' - ' + storage_status.get('message', '') if storage_status.get('message') else ''}</div>",
             unsafe_allow_html=True,
         )
+        generation_mode = "API" if _api_mode_enabled() else "Local"
+        generation_detail = (
+            "API-backed generation is enabled via `RECRUITMENT_API_BASE_URL`."
+            if generation_mode == "API"
+            else "Running the local workflow directly."
+        )
+        st.markdown(
+            f"<div class='runtime-caption'>Generation mode: <strong>{generation_mode}</strong> - {generation_detail}</div>",
+            unsafe_allow_html=True,
+        )
         read_path_label = "Bronze read path active" if settings.storage_backend == "databricks" else "Local read path active"
         st.markdown(
             f"<div class='runtime-badge'>{read_path_label}</div>",
@@ -1319,6 +1334,162 @@ def _format_provider_label(provider: str) -> str:
     return provider.title() if provider else "Unknown"
 
 
+def _api_base_url() -> str:
+    return os.getenv("RECRUITMENT_API_BASE_URL", "").strip().rstrip("/")
+
+
+def _api_mode_enabled() -> bool:
+    return bool(_api_base_url())
+
+
+def _api_request_json(method: str, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    base_url = _api_base_url()
+    if not base_url:
+        raise ValueError("RECRUITMENT_API_BASE_URL is not set.")
+
+    url = f"{base_url}{path}"
+    data = None
+    headers = {"Content-Type": "application/json"}
+    if payload is not None:
+        data = json.dumps(payload).encode("utf-8")
+
+    req = urllib_request.Request(url, data=data, headers=headers, method=method.upper())
+    try:
+        with urllib_request.urlopen(req, timeout=120) as resp:
+            raw = resp.read().decode("utf-8").strip()
+            return json.loads(raw) if raw else {}
+    except urllib_error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="ignore")
+        raise RuntimeError(f"API request failed: {exc.code} {exc.reason}: {detail}") from exc
+
+
+def _run_generation_via_api(
+    *,
+    job_text: str,
+    use_retrieval: bool,
+    top_k: int,
+    domain_override: str,
+    show_retrieval_debug: bool,
+    assignment_hours: str,
+    difficulty: str,
+    focus_area: str,
+) -> dict[str, Any]:
+    payload = {
+        "job_text": job_text,
+        "assignment_hours": assignment_hours,
+        "difficulty": difficulty,
+        "focus_area": focus_area,
+        "use_retrieval": use_retrieval,
+        "top_k": top_k,
+        "domain_override": domain_override,
+        "show_retrieval_debug": show_retrieval_debug,
+        "secret_scope": os.getenv("DATABRICKS_SECRET_SCOPE", "mlops-project").strip() or "mlops-project",
+    }
+
+    created = _api_request_json("POST", "/job-ads", payload)
+    job_id = str(created.get("job_id") or "").strip()
+    if not job_id:
+        raise RuntimeError("API did not return a job_id.")
+
+    created_status = str(created.get("status") or "").strip().lower()
+    created_error = str(created.get("error_message") or "").strip()
+    if created_status == "failed":
+        raise RuntimeError(created_error or str(created.get("message") or "Failed to trigger Databricks job.").strip())
+
+    status_payload: dict[str, Any] = created
+    result_payload: dict[str, Any] = {}
+    for _ in range(180):
+        status_payload = _api_request_json("GET", f"/job-ads/{job_id}")
+        status = str(status_payload.get("status") or "").strip().lower()
+        if status in {"completed", "failed"}:
+            break
+        time.sleep(2)
+
+    status_error = str(status_payload.get("error_message") or "").strip()
+    if str(status_payload.get("status") or "").strip().lower() == "failed":
+        raise RuntimeError(status_error or str(status_payload.get("message") or "Databricks job failed.").strip())
+
+    for _ in range(15):
+        result_payload = _api_request_json("GET", f"/job-ads/{job_id}/result")
+        assignment_preview = str(result_payload.get("assignment_text") or "").strip()
+        if assignment_preview:
+            break
+        if str(status_payload.get("status") or "").strip().lower() == "failed":
+            break
+        time.sleep(1)
+
+    assignment_text = str(result_payload.get("assignment_text") or "").strip()
+    result_error = str(result_payload.get("error_message") or "").strip()
+    if not assignment_text and result_error:
+        raise RuntimeError(result_error)
+
+    parsed_data = result_payload.get("result_payload", {}).get("parsed_data") if isinstance(result_payload.get("result_payload"), dict) else {}
+    if not isinstance(parsed_data, dict):
+        parsed_data = {}
+    parsing_source = (
+        result_payload.get("result_payload", {}).get("parsing_source")
+        if isinstance(result_payload.get("result_payload"), dict)
+        else None
+    )
+    parsing_source = str(parsing_source or parsed_data.get("parsing_source") or "unknown").strip()
+    retrieved_examples = []
+    if isinstance(result_payload.get("result_payload"), dict):
+        retrieved_examples = result_payload["result_payload"].get("retrieved_examples", []) or []
+        if not isinstance(retrieved_examples, list):
+            retrieved_examples = []
+
+    result_obj = SimpleNamespace(
+        provider="api",
+        model="databricks-job",
+        content=assignment_text,
+    )
+
+    judge_result = result_payload.get("result_payload", {}).get("judge_result") if isinstance(result_payload.get("result_payload"), dict) else None
+    if not isinstance(judge_result, dict):
+        judge_result = {}
+
+    workflow = SimpleNamespace(
+        record={"job_id": job_id},
+        cleaned_text=job_text,
+        parsed_obj=parsed_data,
+        parsed_dict=parsed_data,
+        parsing_source=parsing_source,
+        retrieved_examples=retrieved_examples,
+        prompt=(result_payload.get("result_payload", {}).get("prompt") if isinstance(result_payload.get("result_payload"), dict) else "") or "",
+        result=result_obj,
+        judge_result=SimpleNamespace(raw_response=judge_result, overall_score=(judge_result or {}).get("overall_score")) if judge_result else None,
+        judge_error=result_payload.get("result_payload", {}).get("judge_error") if isinstance(result_payload.get("result_payload"), dict) else None,
+        kpis=result_payload.get("kpis") or {},
+    )
+
+    return {
+        "workflow": workflow,
+        "record": {"job_id": job_id},
+        "cleaned_text": job_text,
+        "parsed_obj": parsed_data,
+        "parsed_dict": parsed_data,
+        "parsing_source": parsing_source,
+        "retrieved_examples": retrieved_examples,
+        "prompt": workflow.prompt,
+        "result": result_obj,
+        "judge_result": workflow.judge_result,
+        "judge_error": workflow.judge_error,
+        "kpis": result_payload.get("kpis") or {},
+        "show_retrieval_debug": show_retrieval_debug,
+        "use_retrieval": use_retrieval,
+        "top_k": top_k,
+        "domain_override": domain_override,
+        "assignment_hours": assignment_hours,
+        "difficulty": difficulty,
+        "focus_area": focus_area,
+        "job_id": job_id,
+        "assignment_id": result_payload.get("assignment_id"),
+        "version": result_payload.get("version"),
+        "result_payload": result_payload,
+        "status_payload": status_payload,
+    }
+
+
 def render_setting_pills(
     *,
     duration: str,
@@ -1356,6 +1527,20 @@ def run_generation(
     previous_assignment: str | None = None,
     feedback_reason: str | None = None,
 ) -> dict[str, Any]:
+    if _api_mode_enabled():
+        api_output = _run_generation_via_api(
+            job_text=job_text,
+            use_retrieval=use_retrieval,
+            top_k=top_k,
+            domain_override=domain_override,
+            show_retrieval_debug=show_retrieval_debug,
+            assignment_hours=assignment_hours,
+            difficulty=difficulty,
+            focus_area=focus_area,
+        )
+        api_output["execution_mode"] = "api"
+        return api_output
+
     workflow = run_assignment_workflow(
         job_text=job_text,
         use_retrieval=use_retrieval,
@@ -1370,6 +1555,7 @@ def run_generation(
     )
 
     return {
+        "execution_mode": "local",
         "workflow": workflow,
         "record": workflow.record,
         "cleaned_text": workflow.cleaned_text,
@@ -1991,34 +2177,37 @@ if generate_clicked:
                 judge_result = output["judge_result"]
                 judge_error = output["judge_error"]
                 workflow = output["workflow"]
+                execution_mode = str(output.get("execution_mode") or "local").strip().lower()
+                assignment_id = str(output.get("assignment_id") or "").strip() or str(uuid.uuid4())
+                version = int(output.get("version") or 1)
 
-                assignment_id = str(uuid.uuid4())
-                persist_assignment_version(
-                    job_id=record["job_id"],
-                    assignment_id=assignment_id,
-                    workflow=workflow,
-                    version=1,
-                    target_duration=assignment_hours,
-                    difficulty=difficulty,
-                    focus_area=focus_area,
-                    use_retrieval=use_retrieval,
-                    top_k=top_k,
-                    domain_override=domain_override,
-                    show_retrieval_debug=show_retrieval_debug,
-                )
+                if execution_mode != "api":
+                    persist_assignment_version(
+                        job_id=record["job_id"],
+                        assignment_id=assignment_id,
+                        workflow=workflow,
+                        version=1,
+                        target_duration=assignment_hours,
+                        difficulty=difficulty,
+                        focus_area=focus_area,
+                        use_retrieval=use_retrieval,
+                        top_k=top_k,
+                        domain_override=domain_override,
+                        show_retrieval_debug=show_retrieval_debug,
+                    )
 
                 st.session_state.job_id = record["job_id"]
                 st.session_state.assignment_id = assignment_id
                 st.session_state.assignment_text = result.content
                 st.session_state.parsed_data = parsed_dict
                 st.session_state.cleaned_text = output["cleaned_text"]
-                st.session_state.version = 1
+                st.session_state.version = version
                 st.session_state.retrieved_examples = retrieved_examples
                 st.session_state.parsing_source = parsing_source
                 st.session_state.kpis = kpis
                 st.session_state.version_history = [
                     {
-                        "version": 1,
+                        "version": version,
                         "assignment_id": assignment_id,
                         "text": result.content,
                         "retrieved_examples": retrieved_examples,
@@ -2042,6 +2231,12 @@ if generate_clicked:
                 else:
                     st.info("Rule-based parser was used for this version.")
 
+        except RuntimeError as exc:
+            message = str(exc).strip()
+            if "Databricks" in message or "API request failed" in message:
+                st.error(message or "Databricks trigger failed.")
+            else:
+                st.exception(exc)
         except Exception as exc:
             st.exception(exc)
 

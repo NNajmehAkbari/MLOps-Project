@@ -206,7 +206,11 @@ def home() -> str:
         const data = await response.json();
         latestJobId = data.job_id || "";
         setOutput(data);
-        setStatus(`Submitted. Job ID: ${latestJobId}`);
+        if (String(data.status || "").toLowerCase() === "failed") {
+          setStatus(data.error_message || data.message || "Databricks trigger failed.");
+        } else {
+          setStatus(`Submitted. Job ID: ${latestJobId}`);
+        }
       }
 
       async function loadLatest() {
@@ -223,7 +227,11 @@ def home() -> str:
         const resultData = await resultResponse.json();
 
         setOutput({ status: statusData, result: resultData });
-        setStatus(`Status: ${statusData.status}`);
+        if (String(statusData.status || "").toLowerCase() === "failed") {
+          setStatus(statusData.error_message || statusData.message || "Databricks job failed.");
+        } else {
+          setStatus(`Status: ${statusData.status}`);
+        }
       }
     </script>
   </body>

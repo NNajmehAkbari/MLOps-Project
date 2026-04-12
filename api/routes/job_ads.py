@@ -22,6 +22,7 @@ def create_job_ad_endpoint(payload: JobAdCreateRequest) -> JobAdCreateResponse:
         message=record["message"],
         databricks_run_id=record.get("run_id"),
         databricks_job_id=record.get("databricks_job_id"),
+        error_message=record.get("error_message"),
     )
 
 
@@ -39,6 +40,7 @@ def get_job_status_endpoint(job_id: str) -> JobAdStatusResponse:
         databricks_run_id=record.get("run_id"),
         databricks_job_id=record.get("databricks_job_id"),
         updated_at=record.get("updated_at"),
+        error_message=record.get("error_message"),
     )
 
 
